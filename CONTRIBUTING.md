@@ -157,9 +157,10 @@ Closes #issue_number
 
 ## 📞 联系方式
 
-- 项目维护者：[Your Name]
-- 邮箱：your-email@example.com
-- 项目主页：[Project URL]
+- 项目维护者：DXinLei
+- 邮箱：854394696@qq.com
+- 电话：18180682467
+- 项目主页：https://github.com/DXinLei/ziwei-frontend
 
 ---
 
