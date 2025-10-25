@@ -20,69 +20,7 @@
 
     <!-- 命盘网格容器 - 4x4网格布局 -->
     <div class="mingpan-grid">
-      <!-- 三方四正连线层 -->
-      <svg class="sanfang-sizheng-layer" :width="containerWidth" :height="containerHeight">
-        <defs>
-          <!-- 定义箭头标记 -->
-          <marker
-            id="arrowSanfang"
-            markerWidth="10"
-            markerHeight="10"
-            refX="8"
-            refY="3"
-            orient="auto"
-            markerUnits="strokeWidth"
-          >
-            <path d="M0,0 L0,6 L9,3 z" fill="#2196f3" />
-          </marker>
-          <marker
-            id="arrowSizheng"
-            markerWidth="10"
-            markerHeight="10"
-            refX="8"
-            refY="3"
-            orient="auto"
-            markerUnits="strokeWidth"
-          >
-            <path d="M0,0 L0,6 L9,3 z" fill="#ff9800" />
-          </marker>
-        </defs>
-
-        <!-- 绘制所有连线（原有连线 + 动态连线） -->
-        <g v-for="(line, index) in allConnections" :key="index">
-          <line
-            :x1="line.x1"
-            :y1="line.y1"
-            :x2="line.x2"
-            :y2="line.y2"
-            :stroke="line.type === 'sanfang' ? '#2196f3' : '#ff9800'"
-            :stroke-width="line.type === 'sanfang' ? 2 : 1.5"
-            :stroke-dasharray="line.type === 'sanfang' ? '5,5' : '3,3'"
-            :marker-end="line.type === 'sanfang' ? 'url(#arrowSanfang)' : 'url(#arrowSizheng)'"
-            :opacity="0.8"
-            class="connection-line"
-            :class="{ 'dynamic-connection': isDynamicConnection(line) }"
-          />
-        </g>
-
-        <!-- 绘制对角线（财帛-官禄，夫妻-迁移） -->
-        <g v-if="showDiagonalConnections">
-          <line
-            v-for="(line, index) in diagonalLines"
-            :key="`diagonal-${index}`"
-            :x1="line.x1"
-            :y1="line.y1"
-            :x2="line.x2"
-            :y2="line.y2"
-            stroke="#9c27b0"
-            stroke-width="1"
-            stroke-dasharray="2,2"
-            opacity="0.4"
-            class="diagonal-line"
-          />
-        </g>
-      </svg>
-
+  
       <!-- 十二宫位 - 按照4x4网格布局 -->
       <GongWei
         v-for="(gong, index) in mingpan.gongs"
@@ -90,7 +28,9 @@
         :gong="gong"
         :index="index"
         :mingzhu-gong-index="mingzhuGongIndex"
+        :highlight-type="getGongHighlightType(index)"
         @gong-click="handleGongClick"
+        @gong-hover="handleGongHover"
         :style="getGongStyleByDizhi(gong)"
         class="gongwei-grid-item"
       />
@@ -109,27 +49,7 @@
           <span><el-icon><Setting /></el-icon> 显示控制</span>
         </template>
 
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-switch
-              v-model="showConnections"
-              active-text="三方四正连线"
-              inactive-text="隐藏连线"
-              @change="toggleConnections"
-            />
-          </el-col>
-          <el-col :span="12">
-            <el-switch
-              v-model="showDiagonalConnections"
-              active-text="对角关系线"
-              inactive-text="隐藏对角线"
-              @change="toggleDiagonal"
-            />
-          </el-col>
-        </el-row>
-
-        <el-divider />
-
+  
         <el-row :gutter="16">
           <el-col :span="8">
             <el-button @click="resetView" size="small">
@@ -235,11 +155,8 @@ import { Star, Setting, RefreshLeft, RefreshRight, Download } from '@element-plu
 import GongWei from './GongWei.vue'
 import TianPanInfo from './TianPanInfo.vue'
 import {
-  calculateSanfangSizhengLines,
-  calculateDynamicConnections,
-  generateSvgLine,
   getGongPosition,
-  isMingGong
+  getGongIndexByName
 } from '../utils/mingpanLayout.js'
 
 // 定义组件属性
@@ -277,17 +194,73 @@ const getGongStyleByDizhi = (gong) => {
 }
 
 // 响应式数据
-const showConnections = ref(true)
-const showDiagonalConnections = ref(false)
 const showGongDetail = ref(false)
 const selectedGong = ref(null)
-const clickedGongIndex = ref(-1)
-const dynamicConnections = ref([])
+
+// 三方四正高亮相关
+const hoveredGongIndex = ref(-1)
+const highlightedGongs = ref(new Set())
 
 // 容器尺寸
 const gridSize = 150
 const containerWidth = computed(() => gridSize * 4)
 const containerHeight = computed(() => gridSize * 4)
+
+// 三方四正关系映射
+const SANFANG_SIZHENG_RELATIONS = {
+  '命宫': { sanfang: ['财帛', '官禄'], sizheng: ['夫妻', '迁移'] },
+  '兄弟': { sanfang: ['奴仆', '父母'], sizheng: ['官禄', '财帛'] },
+  '夫妻': { sanfang: ['田宅', '福德'], sizheng: ['命宫', '迁移'] },
+  '子女': { sanfang: ['官禄', '奴仆'], sizheng: ['兄弟', '财帛'] },
+  '财帛': { sanfang: ['疾厄', '迁移'], sizheng: ['夫妻', '奴仆'] },
+  '疾厄': { sanfang: ['奴仆', '官禄'], sizheng: ['子女', '财帛'] },
+  '迁移': { sanfang: ['官禄', '田宅'], sizheng: ['财帛', '疾厄'] },
+  '奴仆': { sanfang: ['田宅', '福德'], sizheng: ['疾厄', '官禄'] },
+  '官禄': { sanfang: ['奴仆', '父母'], sizheng: ['迁移', '兄弟'] },
+  '田宅': { sanfang: ['福德', '兄弟'], sizheng: ['奴仆', '父母'] },
+  '福德': { sanfang: ['兄弟', '夫妻'], sizheng: ['田宅', '官禄'] },
+  '父母': { sanfang: ['夫妻', '子女'], sizheng: ['兄弟', '奴仆'] }
+}
+
+// 获取宫位的三方四正关系
+const getSanfangSizhengRelations = (gongName) => {
+  return SANFANG_SIZHENG_RELATIONS[gongName] || { sanfang: [], sizheng: [] }
+}
+
+// 计算需要高亮的宫位索引 - 按照正确的三方四正定义
+const calculateHighlightedGongs = (gongIndex) => {
+  const highlighted = new Set()
+  highlighted.add(gongIndex) // 包含自身（本宫）
+
+  if (gongIndex >= 0 && gongIndex < props.mingpan.gongs.length) {
+    const totalGongs = props.mingpan.gongs.length
+
+    // 按照正确的三方四正计算：
+    // 三方：顺时针间隔3个第4个宫位、逆时针间隔3个第4个宫位、顺时针间隔5个第6个宫位
+    // 四正：本宫 + 三个三方宫位
+
+    // 顺时针方向间隔3个，第4个宫位
+    const sanfang1 = (gongIndex + 4) % totalGongs
+    highlighted.add(sanfang1)
+
+    // 逆时针方向间隔3个，第4个宫位
+    const sanfang2 = (gongIndex - 4 + totalGongs) % totalGongs
+    highlighted.add(sanfang2)
+
+    // 顺时针方向间隔5个，第6个宫位
+    const sanfang3 = (gongIndex + 6) % totalGongs
+    highlighted.add(sanfang3)
+
+    console.log(`宫位${gongIndex}(${props.mingpan.gongs[gongIndex].gong?.name})的三方四正:`, {
+      本宫: `${gongIndex}(${props.mingpan.gongs[gongIndex].gong?.name})`,
+      三方1: `${sanfang1}(${props.mingpan.gongs[sanfang1].gong?.name})`,
+      三方2: `${sanfang2}(${props.mingpan.gongs[sanfang2].gong?.name})`,
+      三方3: `${sanfang3}(${props.mingpan.gongs[sanfang3].gong?.name})`
+    })
+  }
+
+  return highlighted
+}
 
 // 计算命主宫位索引
 const mingzhuGongIndex = computed(() => {
@@ -303,164 +276,38 @@ const mingzhuGongIndex = computed(() => {
   return -1
 })
 
-// 计算三方四正连线
-const sanfangSizhengLines = computed(() => {
-  if (!showConnections.value || !props.mingpan) return []
 
-  const lines = []
-  const mingpan = props.mingpan
 
-  // 找到命宫位置
-  let minggongIndex = -1
-  let minggongPos = null
-
-  for (let i = 0; i < mingpan.gongs.length; i++) {
-    const gong = mingpan.gongs[i]
-    if (gong.gong?.name === '命宫') {
-      minggongIndex = i
-      minggongPos = getGongPosition(i)
-      break
-    }
+// 处理宫位悬停
+const handleGongHover = (gongIndex, isHovering) => {
+  if (isHovering) {
+    hoveredGongIndex.value = gongIndex
+    highlightedGongs.value = calculateHighlightedGongs(gongIndex)
+  } else {
+    hoveredGongIndex.value = -1
+    highlightedGongs.value.clear()
   }
-
-  if (!minggongPos) return lines
-
-  // 定义三方四正关系
-  const relations = {
-    sanfang: ['财帛', '官禄'],  // 三方
-    sizheng: ['夫妻', '迁移']   // 四正
-  }
-
-  // 生成连线
-  Object.entries(relations).forEach(([type, gongNames]) => {
-    gongNames.forEach(gongName => {
-      // 找到对应宫位
-      let targetIndex = -1
-      for (let i = 0; i < mingpan.gongs.length; i++) {
-        if (mingpan.gongs[i].gong?.name === gongName) {
-          targetIndex = i
-          break
-        }
-      }
-
-      if (targetIndex !== -1) {
-        const targetPos = getGongPosition(targetIndex)
-        if (targetPos) {
-          const svgLine = generateSvgLine(minggongPos, targetPos, gridSize)
-          lines.push({
-            ...svgLine,
-            type: type,
-            fromGong: '命宫',
-            toGong: gongName
-          })
-        }
-      }
-    })
-  })
-
-  return lines
-})
-
-// 计算对角连线
-const diagonalLines = computed(() => {
-  if (!showDiagonalConnections.value || !props.mingpan) return []
-
-  const lines = []
-  const mingpan = props.mingpan
-
-  // 定义对角关系
-  const diagonalRelations = [
-    ['财帛', '官禄'],
-    ['夫妻', '迁移']
-  ]
-
-  diagonalRelations.forEach(([gong1, gong2]) => {
-    let pos1 = null, pos2 = null
-
-    // 找到两个宫位的位置
-    for (let i = 0; i < mingpan.gongs.length; i++) {
-      const gong = mingpan.gongs[i]
-      if (gong.gong?.name === gong1) {
-        pos1 = getGongPosition(i)
-      } else if (gong.gong?.name === gong2) {
-        pos2 = getGongPosition(i)
-      }
-    }
-
-    if (pos1 && pos2) {
-      const svgLine = generateSvgLine(pos1, pos2, gridSize)
-      lines.push(svgLine)
-    }
-  })
-
-  return lines
-})
-
-// 计算所有连线（原有连线 + 动态连线）
-const allConnections = computed(() => {
-  const connections = []
-
-  // 添加原有的命宫三方四正连线
-  if (showConnections.value) {
-    connections.push(...sanfangSizhengLines.value)
-  }
-
-  // 添加动态连线（如果有点击的宫位）
-  if (dynamicConnections.value.length > 0) {
-    connections.push(...dynamicConnections.value)
-  }
-
-  return connections
-})
+}
 
 // 处理宫位点击
 const handleGongClick = (gongInfo) => {
-  // 后续可以在这里添加三方四正显示的逻辑
   console.log('宫位点击:', gongInfo.gong.name)
-
-  // 更新动态连线（基于点击的宫位）
-  updateDynamicConnections(gongInfo.index)
+  // 点击功能已移除，现在只记录日志
 }
 
-// 判断是否为动态连线
-const isDynamicConnection = (line) => {
-  if (!line.fromGong || !line.toGong) return false
-  return dynamicConnections.value.some(dc =>
-    dc.fromGong === line.fromGong && dc.toGong === line.toGong
-  )
-}
-
-// 更新动态三方四正连线
-const updateDynamicConnections = (gongIndex) => {
-  console.log('更新动态连线，点击宫位索引:', gongIndex)
-
-  if (gongIndex >= 0 && gongIndex < props.mingpan.gongs.length) {
-    clickedGongIndex.value = gongIndex
-    dynamicConnections.value = calculateDynamicConnections(props.mingpan, gongIndex)
-  } else {
-    clickedGongIndex.value = -1
-    dynamicConnections.value = []
-  }
-}
-
-// 切换连线显示
-const toggleConnections = (show) => {
-  console.log('三方四正连线显示:', show)
-}
-
-// 切换对角线显示
-const toggleDiagonal = (show) => {
-  console.log('对角线显示:', show)
+// 获取宫位的高亮类型
+const getGongHighlightType = (gongIndex) => {
+  if (hoveredGongIndex.value === gongIndex) return 'hovered'
+  if (highlightedGongs.value.has(gongIndex)) return 'related'
+  return null
 }
 
 // 重置视图
 const resetView = () => {
-  showConnections.value = true
-  showDiagonalConnections.value = false
   showGongDetail.value = false
   selectedGong.value = null
-  clickedGongIndex.value = -1
-  dynamicConnections.value = []
+  hoveredGongIndex.value = -1
+  highlightedGongs.value.clear()
 }
 
 // 重置命盘
@@ -586,34 +433,6 @@ onMounted(() => {
   z-index: 1;
 }
 
-.connection-line {
-  transition: opacity 0.3s ease;
-}
-
-.connection-line:hover {
-  opacity: 1 !important;
-  stroke-width: 3px !important;
-}
-
-.dynamic-connection {
-  animation: pulse-connection 2s ease-in-out infinite;
-  filter: drop-shadow(0 0 3px rgba(33, 150, 243, 0.6));
-}
-
-@keyframes pulse-connection {
-  0%, 100% {
-    opacity: 0.6;
-    stroke-width: 2;
-  }
-  50% {
-    opacity: 1;
-    stroke-width: 4;
-  }
-}
-
-.diagonal-line {
-  transition: opacity 0.3s ease;
-}
 
 .control-panel {
   max-width: 600px;
@@ -748,19 +567,6 @@ onMounted(() => {
   z-index: 2;
 }
 
-/* SVG连线动画效果 */
-.connection-line {
-  animation: drawLine 1s ease-in-out;
-}
-
-@keyframes drawLine {
-  from {
-    stroke-dashoffset: 100;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
 
 /* 控制面板样式优化 */
 .control-panel :deep(.el-card__header) {

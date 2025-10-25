@@ -9,6 +9,12 @@
     :aria-label="`${gongName}宫，${totalStars}个星辰`"
     :title="gongTooltip"
   >
+    <!-- 高亮指示器 -->
+    <div v-if="highlightType" class="highlight-indicator" :class="`highlight-indicator-${highlightType}`">
+      <span v-if="highlightType === 'hovered'" class="indicator-symbol">◉</span>
+      <span v-else-if="highlightType === 'related'" class="indicator-symbol">◈</span>
+    </div>
+
     <!-- 宫位头部信息 -->
     <div class="gongwei-header">
       <div class="gongwei-title">
@@ -84,20 +90,43 @@
       </div>
     </div>
 
-    <!-- 底部信息 -->
-    <div class="gongwei-footer">
-      <div class="changsheng">
-        <span class="label">长生:</span>
-        <span class="value" :class="changshengClass">{{ changshengName }}</span>
+    <!-- 底部三区域信息 -->
+    <div class="gongwei-bottom-section">
+      <!-- 左下角：博士12星和建前12星 -->
+      <div class="bottom-left">
+        <!-- 博士12星 (绿色) -->
+        <div v-if="boshi12Star" class="boshi-stars-bottom">
+          <span class="star-text boshi-text">{{ boshi12Star }}</span>
+        </div>
+        <!-- 建前12星 (黑色) -->
+        <div v-if="jianqian12Star" class="jianqian-stars-bottom">
+          <span class="star-text jianqian-text">{{ jianqian12Star }}</span>
+        </div>
       </div>
-      <div v-if="daxianText" class="daxian">
-        <span class="label">大限:</span>
-        <span class="value">{{ daxianText }}</span>
+
+      <!-- 底部中间：大限和小限信息 -->
+      <div class="bottom-center">
+        <div v-if="daxianText || xiaoxianText" class="daxian-xiaoxian-container">
+          <div v-if="daxianText" class="daxian-simple">
+            <span class="daxian-text">{{ daxianText }}</span>
+          </div>
+          <div v-if="xiaoxianText" class="xiaoxian-simple">
+            <span class="xiaoxian-text">{{ xiaoxianText }}</span>
+          </div>
+        </div>
       </div>
-      <div v-if="dayunText" class="dayun">
-        <span class="label">大运:</span>
-        <span class="value">{{ dayunText }}</span>
+
+      <!-- 右下角：长生12星 -->
+      <div class="bottom-right">
+        <div v-if="changshengName" class="changsheng-simple">
+          <span class="changsheng-text" :class="changshengClass">{{ changshengName }}</span>
+        </div>
       </div>
+    </div>
+
+    <!-- 大运信息 (保留在神煞之前) -->
+    <div v-if="dayunText" class="dayun-section">
+      <span class="dayun-text">{{ dayunText }}</span>
     </div>
 
     <!-- 神煞信息 -->
@@ -138,11 +167,16 @@ const props = defineProps({
   isInteractive: {
     type: Boolean,
     default: true
+  },
+  highlightType: {
+    type: String,
+    default: null,
+    validator: (value) => ['clicked', 'hovered', 'related', null].includes(value)
   }
 })
 
 // 定义组件事件
-const emit = defineEmits(['gong-click', 'gong-hover', 'gong-leave'])
+const emit = defineEmits(['gong-click', 'gong-hover'])
 
 // 计算宫位名称
 const gongName = computed(() => {
@@ -189,6 +223,20 @@ const daxianText = computed(() => {
   return ''
 })
 
+// 计算小限文本
+const xiaoxianText = computed(() => {
+  if (props.gong.xiaoxian !== undefined) {
+    // 生成完整的小限序列：xiaoxian, xiaoxian+12, xiaoxian+24, xiaoxian+36, xiaoxian+48, xiaoxian+60
+    const baseXiaoxian = props.gong.xiaoxian
+    const xiaoxianSequence = []
+    for (let i = 0; i < 6; i++) {
+      xiaoxianSequence.push(baseXiaoxian + (i * 12))
+    }
+    return xiaoxianSequence.join(',')
+  }
+  return ''
+})
+
 // 计算宫位大运信息
 const dayunText = computed(() => {
   if (props.gong.dayunStart !== undefined && props.gong.dayunEnd !== undefined) {
@@ -223,6 +271,16 @@ const shenshaList = computed(() => {
     })
   }
   return shensha
+})
+
+// 计算博士12星
+const boshi12Star = computed(() => {
+  return props.gong.boshi12Star?.name || ''
+})
+
+// 计算建前12星
+const jianqian12Star = computed(() => {
+  return props.gong.jianqian12Star?.name || ''
 })
 
 // 计算是否有甲级星
@@ -280,7 +338,39 @@ const gongClass = computed(() => {
     classes.push('gongwei-shengong')
   }
 
+  // 添加高亮样式
+  if (props.highlightType) {
+    classes.push(`gongwei-highlight-${props.highlightType}`)
+  }
+
   return classes
+})
+
+// 计算宫位提示信息
+const gongTooltip = computed(() => {
+  let tooltip = `${gongName.value}宫`
+
+  if (tianganText.value || dizhiText.value) {
+    tooltip += ` (${tianganText.value}${dizhiText.value})`
+  }
+
+  if (nayinText.value) {
+    tooltip += ` ${nayinText.value}`
+  }
+
+  if (boshi12Star.value) {
+    tooltip += ` 博士:${boshi12Star.value}`
+  }
+
+  if (jianqian12Star.value) {
+    tooltip += ` 建前:${jianqian12Star.value}`
+  }
+
+  if (changshengName.value) {
+    tooltip += ` 长生:${changshengName.value}`
+  }
+
+  return tooltip
 })
 
 // 宫位位置样式现在由父组件通过内联样式设置，这里移除计算逻辑
@@ -289,22 +379,14 @@ const gongClass = computed(() => {
 // 处理鼠标进入
 const handleMouseEnter = () => {
   if (props.isInteractive) {
-    emit('gong-hover', {
-      gong: props.gong,
-      index: props.index,
-      gongName: gongName.value
-    })
+    emit('gong-hover', props.index, true)
   }
 }
 
 // 处理鼠标离开
 const handleMouseLeave = () => {
   if (props.isInteractive) {
-    emit('gong-leave', {
-      gong: props.gong,
-      index: props.index,
-      gongName: gongName.value
-    })
+    emit('gong-hover', props.index, false)
   }
 }
 
@@ -490,32 +572,113 @@ const handleGongClick = () => {
   flex: 1;
 }
 
-/* 底部信息 */
-.gongwei-footer {
+/* 底部三区域布局 */
+.gongwei-bottom-section {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
   margin-top: 4px;
   padding-top: 4px;
   border-top: 1px solid #eee;
-  font-size: 10px;
+  min-height: 40px;
 }
 
-.changsheng, .daxian {
+.bottom-left {
+  flex: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
 }
 
-.label {
-  color: #6c757d;
+.bottom-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.value {
+.bottom-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+/* 博士12星样式 (绿色，12px) */
+.boshi-stars-bottom {
+  display: flex;
+  align-items: center;
+}
+
+.boshi-text {
+  color: #28a745;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* 建前12星样式 (黑色，12px) */
+.jianqian-stars-bottom {
+  display: flex;
+  align-items: center;
+}
+
+.jianqian-text {
+  color: #2c3e50;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* 大限和小限容器样式 */
+.daxian-xiaoxian-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+/* 大限信息样式 (底部中间，10px) */
+.daxian-simple {
+  display: flex;
+  align-items: center;
+}
+
+.daxian-text {
+  color: #007bff;
+  font-size: 10px;
   font-weight: 500;
+  line-height: 1.2;
 }
 
-/* 长生样式 */
+/* 小限信息样式 (大限下方，10px) */
+.xiaoxian-simple {
+  display: flex;
+  align-items: center;
+}
+
+.xiaoxian-text {
+  color: #007bff;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* 长生12星样式 (右下角，10px) */
+.changsheng-simple {
+  display: flex;
+  align-items: center;
+}
+
+.changsheng-text {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* 长生颜色样式 */
 .changsheng-sheng { color: #28a745; }
 .changsheng-muyu { color: #17a2b8; }
 .changsheng-guandai { color: #ffc107; }
@@ -528,6 +691,20 @@ const handleGongClick = () => {
 .changsheng-jue { color: #6610f2; }
 .changsheng-tai { color: #20c997; }
 .changsheng-yang { color: #0d6efd; }
+
+/* 大运信息样式 */
+.dayun-section {
+  margin-top: 2px;
+  padding-top: 2px;
+  border-top: 1px solid #f0f0f0;
+  text-align: center;
+}
+
+.dayun-section .dayun-text {
+  color: #9c27b0;
+  font-size: 10px;
+  font-weight: 500;
+}
 
 
 /* 响应式设计 */
@@ -688,24 +865,7 @@ const handleGongClick = () => {
   border: 1px solid #e0e0e0;
 }
 
-/* 大运样式 */
-.dayun {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
 
-.dayun .label {
-  color: #9c27b0;
-  font-size: 9px;
-  font-weight: 500;
-}
-
-.dayun .value {
-  color: #9c27b0;
-  font-size: 9px;
-  font-weight: 600;
-}
 
 /* 连接线动画 */
 .gongwei.connected::before {
@@ -730,6 +890,134 @@ const handleGongClick = () => {
   50% {
     transform: translate(-50%, -50%) scale(1.5);
     opacity: 0.5;
+  }
+}
+
+/* 高亮指示器 */
+.highlight-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  animation: indicator-bounce 2s ease-in-out infinite;
+}
+
+
+.highlight-indicator-hovered {
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.6);
+}
+
+.highlight-indicator-related {
+  background: linear-gradient(135deg, #52c41a, #73d13d);
+  box-shadow: 0 2px 8px rgba(82, 196, 26, 0.6);
+}
+
+.indicator-symbol {
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes indicator-bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* 三方四正高亮样式 */
+.gongwei-highlight-hovered {
+  border: 3px solid #1890ff !important;
+  box-shadow: 0 0 18px rgba(24, 144, 255, 0.7) !important;
+  background-color: rgba(24, 144, 255, 0.15) !important;
+  transform: scale(1.03);
+  z-index: 8;
+  position: relative;
+}
+
+.gongwei-highlight-hovered::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  border: 1px solid #1890ff;
+  border-radius: 5px;
+  z-index: -1;
+}
+
+.gongwei-highlight-related {
+  border: 3px solid #52c41a !important;
+  box-shadow: 0 0 15px rgba(82, 196, 26, 0.6) !important;
+  background-color: rgba(82, 196, 26, 0.12) !important;
+  transform: scale(1.02);
+  z-index: 6;
+  position: relative;
+}
+
+.gongwei-highlight-related::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  border: 1px solid #52c41a;
+  border-radius: 5px;
+  z-index: -1;
+}
+
+/* 平滑过渡效果 */
+.gongwei {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.gongwei-highlight-clicked,
+.gongwei-highlight-hovered,
+.gongwei-highlight-related {
+  transition: all 0.2s ease;
+}
+
+/* 脉冲动画效果 */
+.gongwei-highlight-clicked {
+  animation: pulse-clicked 2s ease-in-out infinite;
+}
+
+.gongwei-highlight-hovered {
+  animation: pulse-hovered 1.5s ease-in-out infinite;
+}
+
+.gongwei-highlight-related {
+  animation: pulse-related 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse-hovered {
+  0%, 100% {
+    box-shadow: 0 0 18px rgba(24, 144, 255, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(24, 144, 255, 0.9);
+  }
+}
+
+@keyframes pulse-related {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(82, 196, 26, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(82, 196, 26, 0.8);
   }
 }
 </style>

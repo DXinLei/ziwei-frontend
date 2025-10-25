@@ -263,8 +263,7 @@ export const API_BASE_URL = 'your-api-server-url'
 如有问题或建议，请通过以下方式联系：
 
 - 提交 [Issue](../../issues)
-- 邮箱: 854394696@qq.com
-- 电话: 18180682467
+- 邮箱: your-email@example.com
 
 ---
 

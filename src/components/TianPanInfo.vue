@@ -1,6 +1,6 @@
 <template>
   <div class="tianpan-info">
-    <el-card shadow="inner" style="height: 100%;">
+    <el-card shadow="hover" style="height: 100%;">
       <template #header>
         <div class="tianpan-header">
           <el-icon><InfoFilled /></el-icon>
@@ -38,14 +38,18 @@
         </el-descriptions-item>
 
         <el-descriptions-item label="阳历" :span="2">
-          (请在后端提供阳历)
+          {{ timeInfo?.solarDateTime || '加载中...' }}
         </el-descriptions-item>
 
         <el-descriptions-item label="农历" :span="2">
-           {{ mingpan.mingzhu.nianGan.name }}{{ mingpan.mingzhu.nianZhi.name }}年
-           {{ mingpan.mingzhu.yue.name }}月
-           {{ mingpan.mingzhu.ri.name }}日
-           {{ mingpan.mingzhu.shi.name }}时
+          {{ timeInfo?.lunarDateTime || '加载中...' }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="排盘时间" :span="2">
+          <span>{{ timeInfo?.paipanTime || '加载中...' }}</span>
+          <el-tag v-if="timeInfo" type="info" size="small" style="margin-left: 8px;">
+            {{ timeInfo.paipanTimeType }}
+          </el-tag>
         </el-descriptions-item>
 
       </el-descriptions>
@@ -57,13 +61,26 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { InfoFilled } from '@element-plus/icons-vue'
 
-defineProps({
+const props = defineProps({
   mingpan: {
     type: Object,
     required: true,
     default: () => ({ mingzhu: {} }) // 提供默认值防止访问 undefined
+  }
+})
+
+// 计算时间信息
+const timeInfo = computed(() => {
+  if (!props.mingpan?.timeInfo) return null
+
+  return {
+    solarDateTime: props.mingpan.timeInfo.solarDateTime,
+    lunarDateTime: props.mingpan.timeInfo.lunarDateTime,
+    paipanTime: props.mingpan.timeInfo.paipanTime,
+    paipanTimeType: props.mingpan.timeInfo.paipanTimeType
   }
 })
 </script>
