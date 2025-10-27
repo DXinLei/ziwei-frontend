@@ -206,60 +206,20 @@ const gridSize = 150
 const containerWidth = computed(() => gridSize * 4)
 const containerHeight = computed(() => gridSize * 4)
 
-// 三方四正关系映射
-const SANFANG_SIZHENG_RELATIONS = {
-  '命宫': { sanfang: ['财帛', '官禄'], sizheng: ['夫妻', '迁移'] },
-  '兄弟': { sanfang: ['奴仆', '父母'], sizheng: ['官禄', '财帛'] },
-  '夫妻': { sanfang: ['田宅', '福德'], sizheng: ['命宫', '迁移'] },
-  '子女': { sanfang: ['官禄', '奴仆'], sizheng: ['兄弟', '财帛'] },
-  '财帛': { sanfang: ['疾厄', '迁移'], sizheng: ['夫妻', '奴仆'] },
-  '疾厄': { sanfang: ['奴仆', '官禄'], sizheng: ['子女', '财帛'] },
-  '迁移': { sanfang: ['官禄', '田宅'], sizheng: ['财帛', '疾厄'] },
-  '奴仆': { sanfang: ['田宅', '福德'], sizheng: ['疾厄', '官禄'] },
-  '官禄': { sanfang: ['奴仆', '父母'], sizheng: ['迁移', '兄弟'] },
-  '田宅': { sanfang: ['福德', '兄弟'], sizheng: ['奴仆', '父母'] },
-  '福德': { sanfang: ['兄弟', '夫妻'], sizheng: ['田宅', '官禄'] },
-  '父母': { sanfang: ['夫妻', '子女'], sizheng: ['兄弟', '奴仆'] }
-}
 
-// 获取宫位的三方四正关系
-const getSanfangSizhengRelations = (gongName) => {
-  return SANFANG_SIZHENG_RELATIONS[gongName] || { sanfang: [], sizheng: [] }
-}
+// 使用后端提供的三方四正映射数据
+const sanfangSizhengMap = computed(() => {
+  if (!props.mingpan?.sanfangSizhengMap) return {}
+  return props.mingpan.sanfangSizhengMap
+})
 
-// 计算需要高亮的宫位索引 - 按照正确的三方四正定义
+// 简化的计算函数，直接使用后端数据
 const calculateHighlightedGongs = (gongIndex) => {
-  const highlighted = new Set()
-  highlighted.add(gongIndex) // 包含自身（本宫）
-
-  if (gongIndex >= 0 && gongIndex < props.mingpan.gongs.length) {
-    const totalGongs = props.mingpan.gongs.length
-
-    // 按照正确的三方四正计算：
-    // 三方：顺时针间隔3个第4个宫位、逆时针间隔3个第4个宫位、顺时针间隔5个第6个宫位
-    // 四正：本宫 + 三个三方宫位
-
-    // 顺时针方向间隔3个，第4个宫位
-    const sanfang1 = (gongIndex + 4) % totalGongs
-    highlighted.add(sanfang1)
-
-    // 逆时针方向间隔3个，第4个宫位
-    const sanfang2 = (gongIndex - 4 + totalGongs) % totalGongs
-    highlighted.add(sanfang2)
-
-    // 顺时针方向间隔5个，第6个宫位
-    const sanfang3 = (gongIndex + 6) % totalGongs
-    highlighted.add(sanfang3)
-
-    console.log(`宫位${gongIndex}(${props.mingpan.gongs[gongIndex].gong?.name})的三方四正:`, {
-      本宫: `${gongIndex}(${props.mingpan.gongs[gongIndex].gong?.name})`,
-      三方1: `${sanfang1}(${props.mingpan.gongs[sanfang1].gong?.name})`,
-      三方2: `${sanfang2}(${props.mingpan.gongs[sanfang2].gong?.name})`,
-      三方3: `${sanfang3}(${props.mingpan.gongs[sanfang3].gong?.name})`
-    })
+  const relations = sanfangSizhengMap.value[gongIndex.toString()]
+  if (relations && relations.sizheng) {
+    return new Set(relations.sizheng)
   }
-
-  return highlighted
+  return new Set([gongIndex]) // 默认只包含自身
 }
 
 // 计算命主宫位索引
