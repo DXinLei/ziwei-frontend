@@ -110,11 +110,16 @@
       <!-- 地理位置区域 -->
       <div class="form-section">
         <h3 class="section-title">
-          <span>出生地点</span>
-          <el-tooltip content="精确的出生地点可以提高真太阳时计算的准确性" placement="top">
+          <span>出生地点（可选）</span>
+          <el-tooltip content="精确的出生地点可以提高真太阳时计算的准确性，不填则使用标准时间" placement="top">
             <el-icon class="help-icon"><QuestionFilled /></el-icon>
           </el-tooltip>
         </h3>
+
+        <div class="form-help">
+          <el-icon><InfoFilled /></el-icon>
+          如需精确的真太阳时计算，请填写出生地点。不填写将使用标准时间排盘。
+        </div>
 
         <LocationPicker
           v-model="form.location"
@@ -214,8 +219,6 @@ const calendarTypeHelp = computed(() => {
 const canSubmit = computed(() => {
   return form.gender &&
          form.birthDate &&
-         form.location.province &&
-         form.location.city &&
          !loading.value
 })
 
@@ -255,12 +258,6 @@ const rules = reactive({
       },
       trigger: 'change'
     }
-  ],
-  'location.province': [
-    { required: true, message: '请选择省份', trigger: 'change' }
-  ],
-  'location.city': [
-    { required: true, message: '请选择城市', trigger: 'change' }
   ]
 })
 
