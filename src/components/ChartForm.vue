@@ -2,9 +2,9 @@
   <div class="form-container">
     <h2 class="form-title">
       <span class="title-icon">🔮</span>
-      紫微斗数排盘
+      倪派紫微斗数排盘
     </h2>
-    <p class="form-subtitle">专业的紫微斗数命盘分析工具</p>
+    <p class="form-subtitle">专业的倪派紫微斗数命盘分析工具</p>
 
     <el-form
       ref="formRef"
@@ -86,10 +86,6 @@
             :disabled-date="disabledDate"
             @change="handleBirthDateChange"
           />
-          <div class="form-help">
-            <el-icon><InfoFilled /></el-icon>
-            {{ calendarTypeHelp }}
-          </div>
         </el-form-item>
 
         <!-- 闰月（农历时显示） -->
@@ -115,11 +111,6 @@
             <el-icon class="help-icon"><QuestionFilled /></el-icon>
           </el-tooltip>
         </h3>
-
-        <div class="form-help">
-          <el-icon><InfoFilled /></el-icon>
-          如需精确的真太阳时计算，请填写出生地点。不填写将使用标准时间排盘。
-        </div>
 
         <LocationPicker
           v-model="form.location"
@@ -196,7 +187,7 @@ const selectedLocation = ref([])
 
 // 表单数据
 const form = reactive({
-  name: '',
+  name: '匿名',
   gender: 'male',
   calendarType: 'solar',
   birthDate: '',
@@ -206,13 +197,6 @@ const form = reactive({
     district: ''
   },
   leapMonth: false
-})
-
-// 历法类型帮助文本
-const calendarTypeHelp = computed(() => {
-  return form.calendarType === 'solar'
-    ? '请选择公历（阳历）出生日期和时间'
-    : '请选择农历（阴历）出生日期和时间'
 })
 
 // 是否可以提交
@@ -367,7 +351,7 @@ const resetForm = async () => {
 
     // 重新设置默认值
     Object.assign(form, {
-      name: '',
+      name: '匿名',
       gender: 'male',
       calendarType: 'solar',
       birthDate: getDefaultBirthDate(),
@@ -419,21 +403,28 @@ onMounted(() => {
 
   // 显示欢迎消息
   setTimeout(() => {
-    ElMessage.info('欢迎使用紫微斗数排盘系统！')
+    ElMessage.info('欢迎使用倪派紫微斗数排盘系统！')
   }, 1000)
 })
 </script>
 
 <style scoped>
 .form-container {
-  max-width: 700px;
-  margin: 0 auto;
   background: white;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  padding: 2.5rem;
+  padding: 2rem;
   position: relative;
   overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-container > .el-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .form-container::before {
@@ -476,11 +467,12 @@ onMounted(() => {
 }
 
 .form-section {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   padding: 1.5rem;
   background: #f8f9fa;
   border-radius: 12px;
   border: 1px solid #e9ecef;
+  flex-shrink: 0;
 }
 
 .section-title {
@@ -557,11 +549,12 @@ onMounted(() => {
 }
 
 .preview-section {
-  margin-top: 2rem;
-  padding: 1.5rem;
+  margin-top: auto;
+  padding: 1rem;
   background: linear-gradient(135deg, #f8f9fa, #e9ecef);
   border-radius: 12px;
   border: 1px solid #dee2e6;
+  flex-shrink: 0;
 }
 
 .preview-section h3 {
@@ -609,8 +602,8 @@ onMounted(() => {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .form-container {
-    margin: 1rem;
     padding: 1.5rem;
+    height: auto;
   }
 
   .form-title {
@@ -619,11 +612,13 @@ onMounted(() => {
 
   .form-section {
     padding: 1rem;
+    margin-bottom: 1rem;
   }
 
   .form-actions {
     flex-direction: column;
     align-items: stretch;
+    margin-top: 1.5rem;
   }
 
   .form-actions .el-button {
@@ -633,6 +628,14 @@ onMounted(() => {
   :deep(.el-radio.is-bordered) {
     display: block;
     margin-bottom: 10px;
+  }
+
+  .form-container > .el-form {
+    flex: none;
+  }
+
+  .preview-section {
+    margin-top: 1rem;
   }
 }
 </style>

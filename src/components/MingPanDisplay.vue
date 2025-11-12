@@ -4,7 +4,7 @@
     <div class="mingpan-header">
       <h2 class="mingpan-title">
         <el-icon><Star /></el-icon>
-        紫微斗数命盘
+        倪派紫微斗数命盘
       </h2>
       <div class="mingpan-info">
         <el-tag type="primary" size="large">{{ mingpan.mingzhu.name }}</el-tag>
@@ -51,22 +51,16 @@
 
   
         <el-row :gutter="16">
-          <el-col :span="8">
+          <el-col :span="12">
             <el-button @click="resetView" size="small">
               <el-icon><RefreshLeft /></el-icon>
               重置视图
             </el-button>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="12">
             <el-button @click="handleReset" size="small" type="warning">
               <el-icon><RefreshRight /></el-icon>
               重新排盘
-            </el-button>
-          </el-col>
-          <el-col :span="8">
-            <el-button @click="handleExport" size="small" type="primary">
-              <el-icon><Download /></el-icon>
-              导出图片
             </el-button>
           </el-col>
         </el-row>
@@ -151,7 +145,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Star, Setting, RefreshLeft, RefreshRight, Download } from '@element-plus/icons-vue'
+import { Star, Setting, RefreshLeft, RefreshRight } from '@element-plus/icons-vue'
 import GongWei from './GongWei.vue'
 import TianPanInfo from './TianPanInfo.vue'
 import {
@@ -273,14 +267,6 @@ const resetView = () => {
 // 重置命盘
 const handleReset = () => {
   emit('reset')
-}
-
-// 导出命盘
-const handleExport = () => {
-  // 这里可以使用 html2canvas 等库实现真正的图片导出
-  console.log('导出命盘图片')
-  // 暂时显示提示
-  ElMessage.info('导出功能开发中，敬请期待！')
 }
 
 // 检查宫位是否有星辰

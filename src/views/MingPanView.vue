@@ -5,15 +5,15 @@
       <div class="page-header">
         <h1 class="page-title">
           <el-icon><Star /></el-icon>
-          紫微斗数排盘系统
+          倪派紫微斗数排盘系统
         </h1>
-        <p class="page-subtitle">专业的紫微斗数命盘分析工具</p>
+        <p class="page-subtitle">专业的倪派紫微斗数命盘分析工具</p>
       </div>
 
       <!-- 主要内容区域 -->
-      <el-row :gutter="24">
+      <el-row :gutter="20" class="main-content-row">
         <!-- 左侧：表单区域 -->
-        <el-col :xs="24" :md="8" v-if="showForm">
+        <el-col :xs="24" :md="8" v-if="showForm" class="form-col">
           <div class="form-section">
             <ChartForm
               @submit="handleFormSubmit"
@@ -25,7 +25,7 @@
         </el-col>
 
         <!-- 右侧：命盘显示区域 -->
-        <el-col :xs="24" :md="showForm ? 16 : 24">
+        <el-col :xs="24" :md="showForm ? 16 : 24" class="chart-col">
           <div class="chart-section">
             <!-- 加载状态 -->
             <div v-if="loading" class="loading-container">
@@ -59,7 +59,7 @@
             <div v-else class="welcome-container">
               <el-result
                 icon="info"
-                title="欢迎使用紫微斗数排盘系统"
+                title="欢迎使用倪派紫微斗数排盘系统"
                 sub-title="请在左侧填写出生信息开始排盘"
               >
                 <template #extra>
@@ -147,7 +147,7 @@ const handleFormSubmit = async (formData) => {
     console.log('提交排盘数据:', formData)
 
     // 调用API进行排盘
-    const response = await axios.post('http://localhost:8080/api/arrange', formData, {
+    const response = await axios.post('http://localhost:8082/api/arrange', formData, {
       headers: {
         'Content-Type': 'application/json'
       },
@@ -240,7 +240,7 @@ onMounted(() => {
     }
   })
 
-  ElMessage.info('欢迎使用紫微斗数排盘系统！')
+  ElMessage.info('欢迎使用倪派紫微斗数排盘系统！')
 })
 </script>
 
@@ -255,6 +255,7 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
+  min-height: calc(100vh - 40px);
 }
 
 .page-header {
@@ -290,9 +291,10 @@ onMounted(() => {
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  margin-bottom: 24px;
-  max-height: 80vh;
-  overflow-y: auto;
+  margin-bottom: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-section {
@@ -301,6 +303,24 @@ onMounted(() => {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   min-height: 600px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content-row {
+  align-items: stretch;
+  justify-content: space-between;
+}
+
+.form-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-col {
+  display: flex;
+  flex-direction: column;
 }
 
 .loading-container,
@@ -356,6 +376,7 @@ onMounted(() => {
 
   .container {
     padding: 0 10px;
+    min-height: calc(100vh - 20px);
   }
 
   .page-header {
@@ -377,11 +398,14 @@ onMounted(() => {
   .form-section {
     margin-bottom: 16px;
     border-radius: 12px;
+    height: auto;
+    max-height: none;
   }
 
   .chart-section {
     border-radius: 12px;
     min-height: 400px;
+    height: auto;
   }
 
   .loading-container,
@@ -400,6 +424,15 @@ onMounted(() => {
     width: 48px;
     height: 48px;
     font-size: 18px;
+  }
+
+  .form-col,
+  .chart-col {
+    margin-bottom: 16px;
+  }
+
+  .main-content-row {
+    align-items: flex-start;
   }
 }
 
